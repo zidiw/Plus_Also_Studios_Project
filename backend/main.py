@@ -5,9 +5,15 @@ import replicate
 import tempfile
 import os
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 app = FastAPI()
+
 origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 
 # Allow cross-origin requests
@@ -24,22 +30,13 @@ if not replicate_api_token:
     raise ValueError("REPLICATE_API_TOKEN environment variable is not set")
 os.environ["REPLICATE_API_TOKEN"] = replicate_api_token
 
-# Endpoint to download the generated image
-@app.get("/download")
-def download_image():
-    # Return the generated image for download
-    return FileResponse(
-        path="generated.png",
-        media_type="image/png",
-        filename="generated.png"
-    )
 
 # Endpoint to generate a new image based on the user's input
 @app.post("/generate")
 async def generate_image(
-    image: UploadFile = File(...),  # Uploaded product image
-    prompt: str = Form(...),        # Text prompt from the user
-    aspect_ratio: str = Form(...),  # Aspect ratio selected by the user
+        image: UploadFile = File(...),  # Uploaded product image
+        prompt: str = Form(...),  # Text prompt from the user
+        aspect_ratio: str = Form(...),  # Aspect ratio selected by the user
 ):
     try:
         # Save the uploaded image to a temporary file
@@ -62,18 +59,16 @@ async def generate_image(
                     "prompt_upsampling": True
                 }
             )
-            print("Model output:", output)
 
         # Return the URL of the generated image
         return {"generated_image_url": str(output)}
 
     except Exception as e:
         # Handle any errors that occur during the image generation process
-        print("Error during image generation:", e)
+        logger.error(f"Error during image generation: {e}", exc_info=True)
         return JSONResponse(status_code=500, content={"error": str(e)})
 
     finally:
         # Clean up the temporary file after processing
         if os.path.exists(temp_path):
             os.remove(temp_path)
-
