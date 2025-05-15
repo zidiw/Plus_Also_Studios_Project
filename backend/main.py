@@ -57,8 +57,8 @@ async def generate_image(
                 temp_file.write(contents)
                 temp_path = temp_file.name
 
-            with open(temp_path, "rb") as img_file:
-                api_input["image_prompt"] = img_file
+            img_file = open(temp_path, "rb")
+            api_input["image_prompt"] = img_file
 
         # Call the Replicate model (flux-1.1-pro) to generate the new image
         output = replicate.run(
@@ -75,5 +75,7 @@ async def generate_image(
 
     finally:
         # Clean up the temporary file after processing
+        if "img_file" in locals():
+            img_file.close()
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
