@@ -6,6 +6,7 @@ import tempfile
 import os
 from dotenv import load_dotenv
 import logging
+from typing import Optional
 
 load_dotenv()
 
@@ -34,32 +35,36 @@ os.environ["REPLICATE_API_TOKEN"] = replicate_api_token
 # Endpoint to generate a new image based on the user's input
 @app.post("/generate")
 async def generate_image(
-        image: UploadFile = File(...),  # Uploaded product image
+        image: Optional[UploadFile] = File(None),  # Uploaded product image
         prompt: str = Form(...),  # Text prompt from the user
         aspect_ratio: str = Form(...),  # Aspect ratio selected by the user
 ):
     try:
-        # Save the uploaded image to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
-            contents = await image.read()
-            temp_file.write(contents)
-            temp_path = temp_file.name
+        temp_path = None
+        api_input = {
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio,
+            "output_format": "png",
+            "output_quality": 80,
+            "safety_tolerance": 2,
+            "prompt_upsampling": True
+        }
+
+        if image:
+            # Save the uploaded image to a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
+                contents = await image.read()
+                temp_file.write(contents)
+                temp_path = temp_file.name
+
+            with open(temp_path, "rb") as img_file:
+                api_input["image_prompt"] = img_file
 
         # Call the Replicate model (flux-1.1-pro) to generate the new image
-        with open(temp_path, "rb") as img_file:
-            output = replicate.run(
-                "black-forest-labs/flux-1.1-pro",  # Use the appropriate model from Replicate
-                input={
-                    "prompt": prompt,
-                    "image_prompt": img_file,
-                    "aspect_ratio": aspect_ratio,
-                    "output_format": "png",
-                    "output_quality": 80,
-                    "safety_tolerance": 2,
-                    "prompt_upsampling": True
-                }
-            )
-
+        output = replicate.run(
+            "black-forest-labs/flux-1.1-pro",  # Use the appropriate model from Replicate
+            input=api_input
+        )
         # Return the URL of the generated image
         return {"generated_image_url": str(output)}
 
@@ -70,5 +75,5 @@ async def generate_image(
 
     finally:
         # Clean up the temporary file after processing
-        if os.path.exists(temp_path):
+        if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)

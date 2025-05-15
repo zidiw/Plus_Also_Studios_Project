@@ -6,7 +6,7 @@ const REQUEST_TIMEOUT_MS = 30000;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
 const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const ERROR_MESSAGES = {
-    MISSING_INPUT: "Please provide an image and a prompt.",
+    MISSING_INPUT: "Please provide a prompt.",
     TIMEOUT: "The server did not respond in time. Please try again.",
     INVALID_FILE_TYPE: "Invalid file type. Please upload a jpeg, png, gif, or webp image.",
     FILE_SIZE_LIMIT: "Image size must be under 10MB.",
@@ -58,7 +58,7 @@ export default function Home() {
     };
 
     const handleSubmit = async () => {
-        if (!image || !prompt) {
+        if (!prompt) {
             alert(ERROR_MESSAGES.MISSING_INPUT);
             return;
         }
@@ -85,7 +85,9 @@ export default function Home() {
 
     const createFormData = () => {
         const formData = new FormData();
-        formData.append("image", image);
+        if (image) {
+            formData.append("image", image);
+        }
         formData.append("prompt", prompt);
         formData.append("aspect_ratio", aspect);
         return formData;
@@ -154,7 +156,7 @@ export default function Home() {
                 {preview && typeof preview === 'string' && preview.length > 0 ? (
                     <img src={preview} alt="preview" className="h-full object-contain rounded-xl"/>
                 ) : (
-                    <span className="text-slate-400 text-lg">Drag & Drop your image here</span>
+                    <span className="text-slate-400 text-lg">Drag & Drop your image here (optional)</span>
                 )}
             </div>
 
@@ -163,7 +165,7 @@ export default function Home() {
                 onClick={() => fileInputRef.current.click()}
                 className="bg-slate-200 px-6 py-2 rounded-full hover:bg-slate-300 transition"
             >
-                Choose a file
+                Choose an file
             </button>
             <input
                 ref={fileInputRef}
